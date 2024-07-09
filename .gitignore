@@ -1,0 +1,5 @@
+.terraform
+init_s3_content
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
