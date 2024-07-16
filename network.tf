@@ -101,16 +101,46 @@ resource "aws_route_table_association" "pub-sub-assoc-2" {
 
 
 
-#### VPC endpoint for ECR
-resource "aws_vpc_endpoint" "ecr" {
+#### VPC endpoints for ECR
+#### ECR DKR endpoint
+resource "aws_vpc_endpoint" "ecr-dkr" {
   vpc_id            = aws_vpc.this.id
   service_name      = "com.amazonaws.us-east-1.ecr.dkr"
   vpc_endpoint_type = "Interface"
   private_dns_enabled = true
 
-  security_group_ids = [aws_security_group.endpoint-sg.id]  # Replace with appropriate security group ID
+  security_group_ids = [aws_security_group.endpoint-sg.id]
   subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]  # private subnets
 }
+#### ECR API endpoint
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id             = aws_vpc.this.id
+  service_name       = "com.amazonaws.us-east-1.ecr.api"
+  vpc_endpoint_type  = "Interface"
+  private_dns_enabled = true
+
+  security_group_ids = [aws_security_group.endpoint-sg.id]
+  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
+}
+#### CloudWatch endpoint
+resource "aws_vpc_endpoint" "cloudwatch" {
+  vpc_id             = aws_vpc.this.id
+  service_name       = "com.amazonaws.us-east-1.logs"
+  vpc_endpoint_type  = "Interface"
+  private_dns_enabled = true
+
+  security_group_ids = [aws_security_group.endpoint-sg.id]
+  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
+}
+#### S3 endpoint
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id       = aws_vpc.this.id
+  service_name = "com.amazonaws.us-east-1.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids = [aws_route_table.private.id]
+}
+
+
 
 
 
@@ -122,14 +152,7 @@ resource "aws_route_table" "private" {
     Name = "very-simple-webapp-cloud--rt-priv"
   }
 }
-#### Private Route
-resource "aws_route" "private_ecr_endpoint" {
-  route_table_id         = aws_route_table.private.id
-  destination_cidr_block = "0.0.0.0/0"
-  vpc_endpoint_id        = aws_vpc_endpoint.ecr.id
 
-  depends_on = [aws_vpc_endpoint.ecr]
-}
 #### Associate PRIVATE subnets with route table
 resource "aws_route_table_association" "priv_sub_assoc-1" {
   subnet_id      = aws_subnet.priv-subnet-a.id

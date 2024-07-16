@@ -93,3 +93,9 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_cloudwatch" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
+
+#### Attach Policy for S3 Access to ECS Task Execution Role
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_s3" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+}
