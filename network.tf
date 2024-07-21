@@ -173,6 +173,22 @@ resource "aws_lb" "this" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb-sg.id]
   subnets            = [aws_subnet.pub-subnet-a.id, aws_subnet.pub-subnet-b.id] # associate with public subnets
+
+  access_logs {
+    bucket  = aws_s3_bucket.troubleshooting_logs.bucket
+    enabled = true
+  }
+
+  connection_logs {
+    bucket  = aws_s3_bucket.troubleshooting_logs.bucket
+    enabled = true
+  }
+}
+
+
+
+output "alb_dns_name" {
+    value = aws_lb.this.dns_name
 }
 
 #### Listener ########################################
@@ -196,7 +212,7 @@ resource "aws_lb_target_group" "this" {
   target_type = "ip"
 
   health_check {
-    path                = "/"
+    path                = "/health"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
@@ -219,25 +235,32 @@ resource "aws_security_group" "alb-sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"  # Allow all outbound traffic
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
-#### Container SG (from ALB)
+#### Container SG (outbound 443)
 resource "aws_security_group" "container-sg" {
   name = "container-sg"
   vpc_id = aws_vpc.this.id
 
   # Ingress rules will be defined separately below (alb_to_ecs)
 
-  # Egress rule for communication with ECR (to fetch Docker image)
+  # Egress rule for container tasks to access the internet or other services (if needed)
   egress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow outbound to all destinations
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"  # Allow all outbound traffic
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
-#### Container SG rule (from ALB)
+#### Container SG rule (all ports from ALB)
 resource "aws_security_group_rule" "alb_to_ecs" {
   type              = "ingress"
   from_port         = 0
@@ -256,6 +279,26 @@ resource "aws_security_group" "endpoint-sg" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+
+#### DB SG (from ECS task)
+resource "aws_security_group" "rds" {
+  vpc_id = aws_vpc.this.id
+
+  ingress {
+    from_port        = 5432
+    to_port          = 5432
+    protocol         = "tcp"
+    security_groups  = [aws_security_group.container-sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }

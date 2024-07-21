@@ -5,6 +5,20 @@ resource "aws_s3_bucket" "this" {
     force_destroy = true    # delete objects on destroy
 }
 
+resource "aws_s3_bucket_cors_configuration" "this" {
+  bucket = aws_s3_bucket.this.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "POST", "HEAD"]
+    allowed_origins = ["*"]
+    expose_headers = []
+    max_age_seconds = 3000
+  }
+}
+
+
+
 
 # CloudFront Distribution
 resource "aws_cloudfront_distribution" "this" {
@@ -15,11 +29,13 @@ resource "aws_cloudfront_distribution" "this" {
     price_class = "PriceClass_100"
 
     default_cache_behavior {
-      allowed_methods = [ "GET", "HEAD" ]
-      cached_methods = [ "GET", "HEAD" ]
+      allowed_methods = ["HEAD", "DELETE", "POST", "GET", "OPTIONS", "PUT", "PATCH"]
+      cached_methods = ["HEAD", "GET", "OPTIONS"]
       cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"  # AWS managed cache policy (CachingOptimized)
       target_origin_id = aws_s3_bucket.this.bucket
       viewer_protocol_policy = "allow-all"  # allow-all, https-only or redirect-to-https
+
+      response_headers_policy_id = "60669652-455b-4ae9-85a4-c4c02393f86c"
     }
 
     origin {

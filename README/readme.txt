@@ -15,9 +15,10 @@
     - S3 bucket for static frontend files.
     - Cloudfront distribution with the S3 bucket as its origin.
     - Backend resources:
-        - ECS cluster, ECS service and ECS task which will use a Docker image from ECR.
+        - ECS cluster, ECS service and ECS task which will use a Docker image from ECR, RDS database.
 
     - created and assigned appropriate Security Groups for resources: 
-    - opening ports for inbound requests to the Application Load Balancer.
-    - opening ports for inbound and outbound traffic - to ECS containers (tasks) from ALB and from ECS containers (tasks) to ECR.
+    - opening ports for inbound requests to the Application Load Balancer (API calls) and outbound traffic (for directing traffic and Health Checks).
+    - opening ports for inbound and outbound traffic - to ECS containers (tasks) from ALB and from ECS containers (tasks) to ECR and for healthchecks.
     - opening ports for inbound traffic to VPC endopoints (ECS to ECR communication).
+    - opening ports for inbound and outbound traffic for RDS database instances to communicate with the ECS containers.
