@@ -4,7 +4,12 @@
     - GitHub Actions pipelines run on every push to either frontend or backend folder (separate) on the develop branch.
     - frontend pipeline pushes static files to an AWS S3 bucket and invalidates the CloudFront cache.
     - backend pipeline builds a Docker image (as specifed in the Dockerfile) which will run the Python app.
-    - Docker image is then pushed into AWS ECR and used to run the ECS tasks.
+    - Docker image is then pushed into AWS ECR and used to run the ECS tasks
+    - GitHub Actions auth to AWS:
+        - workflow uses OIDC Provider (GitHub) to prove its identity.
+        - workflow uses the token to call STS and obtain temp credentials and assume an IAM Role.
+        - IAM Role can only be assumed by Federated OIDC users and from specific GitHub repo/branch.
+        - IAM Role has Permission Policy assigned that allows actions within AWS.
 
 
 1. Created and configured demo environment on AWS using Terraform:

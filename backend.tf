@@ -7,28 +7,28 @@ resource "aws_ecs_cluster" "this" {
 
 #### ECS Task ########################################
 resource "aws_ecs_task_definition" "this" {
-  family = "python_API"     # name of the task (container)
-  network_mode = "awsvpc"
-  requires_compatibilities = [ "FARGATE" ]
-  cpu = 256
-  memory = 512
+  family                   = "python_API" # name of the task (container)
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 256
+  memory                   = 512
 
   execution_role_arn = aws_iam_role.ecs_task_execution_role.arn # specified below, allows pulling an image from ECR and sending logs to CloudWatch
-  
+
   container_definitions = jsonencode([
     {
-        name = "backend-container"
-        image = "641245087847.dkr.ecr.us-east-1.amazonaws.com/very-simple-webapp-cloud:latest"    # docker image
-        cpu = 256
-        memory = 512
-        essential = true
-        portMappings = [
-            {
-                containerPort = 5000
-                hostPort = 5000
-                protocol = "tcp"
-            }
-        ]
+      name      = "backend-container"
+      image     = "${var.ecr_repo_url}:${var.image_tag}" # docker image
+      cpu       = 256
+      memory    = 512
+      essential = true
+      portMappings = [
+        {
+          containerPort = 5000
+          hostPort      = 5000
+          protocol      = "tcp"
+        }
+      ]
     }
   ])
 }
@@ -38,26 +38,26 @@ resource "aws_ecs_task_definition" "this" {
 
 #### ECS Service #####################################
 resource "aws_ecs_service" "this" {
-  name = "very-simple-webapp-cloud--service"
-  cluster = aws_ecs_cluster.this.id
+  name            = "very-simple-webapp-cloud--service"
+  cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.this.arn
-  launch_type = "FARGATE"
-  
-  scheduling_strategy = "REPLICA"
-  desired_count = 1     # number of containers
+  launch_type     = "FARGATE"
+
+  scheduling_strategy                = "REPLICA"
+  desired_count                      = 1   # number of containers
   deployment_minimum_healthy_percent = 100 # min instance
-  deployment_maximum_percent = 200 # max overprovisioning
+  deployment_maximum_percent         = 200 # max overprovisioning
 
   load_balancer {
     target_group_arn = aws_lb_target_group.this.arn
-    container_name = "backend-container"
-    container_port = 5000
+    container_name   = "backend-container"
+    container_port   = 5000
   }
 
   network_configuration {
     assign_public_ip = false
-    subnets = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
-    security_groups = [ aws_security_group.container-sg.id ]
+    subnets          = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
+    security_groups  = [aws_security_group.container-sg.id]
   }
 }
 
@@ -72,11 +72,11 @@ resource "aws_iam_role" "ecs_task_execution_role" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect    = "Allow"
+        Effect = "Allow"
         Principal = {
           Service = "ecs-tasks.amazonaws.com"
         }
-        Action    = "sts:AssumeRole"
+        Action = "sts:AssumeRole"
       }
     ]
   })

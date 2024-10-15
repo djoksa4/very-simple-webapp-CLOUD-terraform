@@ -42,7 +42,7 @@ resource "aws_subnet" "priv-subnet-a" {
   vpc_id                  = aws_vpc.this.id
   cidr_block              = "10.0.0.96/27" # 10.0.0.97 to 10.0.0.126
   availability_zone       = "us-east-1a"
-  map_public_ip_on_launch = false  
+  map_public_ip_on_launch = false
 
   tags = {
     Name = "priv-subnet-a"
@@ -54,7 +54,7 @@ resource "aws_subnet" "priv-subnet-b" {
   vpc_id                  = aws_vpc.this.id
   cidr_block              = "10.0.0.128/27" # 10.0.0.129 to 10.0.0.158
   availability_zone       = "us-east-1b"
-  map_public_ip_on_launch = false  
+  map_public_ip_on_launch = false
 
   tags = {
     Name = "priv-subnet-b"
@@ -104,19 +104,19 @@ resource "aws_route_table_association" "pub-sub-assoc-2" {
 #### VPC endpoints for ECR
 #### ECR DKR endpoint
 resource "aws_vpc_endpoint" "ecr-dkr" {
-  vpc_id            = aws_vpc.this.id
-  service_name      = "com.amazonaws.us-east-1.ecr.dkr"
-  vpc_endpoint_type = "Interface"
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.us-east-1.ecr.dkr"
+  vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
 
   security_group_ids = [aws_security_group.endpoint-sg.id]
-  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]  # private subnets
+  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id] # private subnets
 }
 #### ECR API endpoint
 resource "aws_vpc_endpoint" "ecr_api" {
-  vpc_id             = aws_vpc.this.id
-  service_name       = "com.amazonaws.us-east-1.ecr.api"
-  vpc_endpoint_type  = "Interface"
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.us-east-1.ecr.api"
+  vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
 
   security_group_ids = [aws_security_group.endpoint-sg.id]
@@ -124,9 +124,9 @@ resource "aws_vpc_endpoint" "ecr_api" {
 }
 #### CloudWatch endpoint
 resource "aws_vpc_endpoint" "cloudwatch" {
-  vpc_id             = aws_vpc.this.id
-  service_name       = "com.amazonaws.us-east-1.logs"
-  vpc_endpoint_type  = "Interface"
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.us-east-1.logs"
+  vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
 
   security_group_ids = [aws_security_group.endpoint-sg.id]
@@ -134,10 +134,10 @@ resource "aws_vpc_endpoint" "cloudwatch" {
 }
 #### S3 endpoint
 resource "aws_vpc_endpoint" "s3" {
-  vpc_id       = aws_vpc.this.id
-  service_name = "com.amazonaws.us-east-1.s3"
+  vpc_id            = aws_vpc.this.id
+  service_name      = "com.amazonaws.us-east-1.s3"
   vpc_endpoint_type = "Gateway"
-  route_table_ids = [aws_route_table.private.id]
+  route_table_ids   = [aws_route_table.private.id]
 }
 
 
@@ -188,27 +188,27 @@ resource "aws_lb" "this" {
 
 
 output "alb_dns_name" {
-    value = aws_lb.this.dns_name
+  value = aws_lb.this.dns_name
 }
 
 #### Listener ########################################
 resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.this.arn   # associate listener with ALB
+  load_balancer_arn = aws_lb.this.arn # associate listener with ALB
   port              = "80"
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.this.arn   # associate listener with TG
+    target_group_arn = aws_lb_target_group.this.arn # associate listener with TG
   }
 }
 
 #### Target Group ####################################
 resource "aws_lb_target_group" "this" {
-  name     = "very-simple-webapp-cloud--tg"
-  port     = 5000   # port on which targets RECEIVE traffic
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.this.id
+  name        = "very-simple-webapp-cloud--tg"
+  port        = 5000 # port on which targets RECEIVE traffic
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.this.id
   target_type = "ip"
 
   health_check {
@@ -226,7 +226,7 @@ resource "aws_lb_target_group" "this" {
 #### Security Groups ##################################
 #### ALB SG (from public)
 resource "aws_security_group" "alb-sg" {
-  name = "alb-sg"
+  name   = "alb-sg"
   vpc_id = aws_vpc.this.id
 
   ingress {
@@ -239,14 +239,14 @@ resource "aws_security_group" "alb-sg" {
   egress {
     from_port   = 0
     to_port     = 0
-    protocol    = "-1"  # Allow all outbound traffic
+    protocol    = "-1" # Allow all outbound traffic
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
 #### Container SG (outbound 443)
 resource "aws_security_group" "container-sg" {
-  name = "container-sg"
+  name   = "container-sg"
   vpc_id = aws_vpc.this.id
 
   # Ingress rules will be defined separately below (alb_to_ecs)
@@ -255,24 +255,24 @@ resource "aws_security_group" "container-sg" {
   egress {
     from_port   = 0
     to_port     = 0
-    protocol    = "-1"  # Allow all outbound traffic
+    protocol    = "-1" # Allow all outbound traffic
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
 #### Container SG rule (all ports from ALB)
 resource "aws_security_group_rule" "alb_to_ecs" {
-  type              = "ingress"
-  from_port         = 0
-  to_port           = 65535
-  protocol          = "tcp"
-  security_group_id = aws_security_group.container-sg.id
+  type                     = "ingress"
+  from_port                = 0
+  to_port                  = 65535
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.container-sg.id
   source_security_group_id = aws_security_group.alb-sg.id
 }
 
 #### VPC endpoint security group
 resource "aws_security_group" "endpoint-sg" {
-  name = "endpoint-sg"
+  name   = "endpoint-sg"
   vpc_id = aws_vpc.this.id
 
   ingress {
@@ -289,10 +289,10 @@ resource "aws_security_group" "rds" {
   vpc_id = aws_vpc.this.id
 
   ingress {
-    from_port        = 5432
-    to_port          = 5432
-    protocol         = "tcp"
-    security_groups  = [aws_security_group.container-sg.id]
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.container-sg.id]
   }
 
   egress {
