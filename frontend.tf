@@ -1,10 +1,11 @@
 
-# S3 Bucket
+#### S3 Bucket
 resource "aws_s3_bucket" "this" {
   bucket        = "static-frontend-uihdfs87ytf764gh"
   force_destroy = true # delete objects on destroy
 }
 
+# S3 Bucket CORS config
 resource "aws_s3_bucket_cors_configuration" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -17,10 +18,34 @@ resource "aws_s3_bucket_cors_configuration" "this" {
   }
 }
 
+# Data to be applied to S3 Bucket Policy
+data "aws_iam_policy_document" "cloudfront_oac_access" {
+  statement {
+
+    principals {
+      identifiers = ["cloudfront.amazonaws.com"]
+      type        = "Service"
+    }
+
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.this.arn}/*"]
+
+    condition {
+      test     = "StringEquals"
+      values   = [aws_cloudfront_distribution.this.arn]
+      variable = "AWS:SourceArn"
+    }
+  }
+}
+
+# S3 Bucket Policy
+resource "aws_s3_bucket_policy" "this" {
+  bucket = aws_s3_bucket.this.id
+  policy = data.aws_iam_policy_document.cloudfront_oac_access.json
+}
 
 
-
-# CloudFront Distribution
+#### CloudFront Distribution
 resource "aws_cloudfront_distribution" "this" {
   enabled             = true
   default_root_object = "index.html"
@@ -31,7 +56,7 @@ resource "aws_cloudfront_distribution" "this" {
   default_cache_behavior {
     allowed_methods        = ["HEAD", "DELETE", "POST", "GET", "OPTIONS", "PUT", "PATCH"]
     cached_methods         = ["HEAD", "GET", "OPTIONS"]
-    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6" # AWS managed cache policy (CachingOptimized)
+    cache_policy_id        = aws_cloudfront_cache_policy.custom_cache_policy.id
     target_origin_id       = aws_s3_bucket.this.bucket
     viewer_protocol_policy = "allow-all" # allow-all, https-only or redirect-to-https
 
@@ -55,8 +80,7 @@ resource "aws_cloudfront_distribution" "this" {
   }
 }
 
-
-# CloudFront Origin Access Control (OAC)
+## CloudFront Origin Access Control (OAC)
 resource "aws_cloudfront_origin_access_control" "this" {
   name                              = "s3-cloudfront-oac"
   origin_access_control_origin_type = "s3"
@@ -64,30 +88,31 @@ resource "aws_cloudfront_origin_access_control" "this" {
   signing_protocol                  = "sigv4"
 }
 
+# Custom CloudFront cache policy
+resource "aws_cloudfront_cache_policy" "custom_cache_policy" {
+  name    = "custom-cache-policy-with-cors"
+  comment = "Custom cache policy with CORS headers"
 
-# Data to be applied to S3 Bucket Policy
-data "aws_iam_policy_document" "cloudfront_oac_access" {
-  statement {
+  default_ttl = 86400  # 1 day (same as CachingOptimized)
+  max_ttl     = 31536000  # 1 year (same as CachingOptimized)
+  min_ttl     = 60  # 1 minute (same as CachingOptimized)
 
-    principals {
-      identifiers = ["cloudfront.amazonaws.com"]
-      type        = "Service"
+  parameters_in_cache_key_and_forwarded_to_origin {
+    headers_config {
+      header_behavior = "whitelist"
+      headers {
+        items           = ["Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method"]
+      }
     }
 
-    actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.this.arn}/*"]
+    cookies_config {
+      cookie_behavior = "none"
+    }
 
-    condition {
-      test     = "StringEquals"
-      values   = [aws_cloudfront_distribution.this.arn]
-      variable = "AWS:SourceArn"
+    query_strings_config {
+      query_string_behavior = "none"
     }
   }
 }
 
 
-# S3 Bucket Policy
-resource "aws_s3_bucket_policy" "this" {
-  bucket = aws_s3_bucket.this.id
-  policy = data.aws_iam_policy_document.cloudfront_oac_access.json
-}

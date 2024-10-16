@@ -22,6 +22,16 @@ resource "aws_ecs_task_definition" "this" {
       cpu       = 256
       memory    = 512
       essential = true
+
+      logConfiguration = {
+        logDriver = "awslogs"
+          options = {
+            awslogs-group         = aws_cloudwatch_log_group.this.name
+            awslogs-region        = "us-east-1"
+            awslogs-stream-prefix = "ecs"
+          }
+      }
+
       portMappings = [
         {
           containerPort = 5000
@@ -33,7 +43,10 @@ resource "aws_ecs_task_definition" "this" {
   ])
 }
 
-
+resource "aws_cloudwatch_log_group" "this" {
+  name              = "/ecs/ecs-log-group"
+  retention_in_days = 7  # Adjust retention as needed
+}
 
 
 #### ECS Service #####################################
@@ -68,6 +81,7 @@ resource "aws_ecs_service" "this" {
 #### IAM Role for ECS Task Execution #################
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "ecs_task_execution_role"
+  
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

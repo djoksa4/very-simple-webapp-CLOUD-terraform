@@ -186,11 +186,6 @@ resource "aws_lb" "this" {
 }
 
 
-
-output "alb_dns_name" {
-  value = aws_lb.this.dns_name
-}
-
 #### Listener ########################################
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.this.arn # associate listener with ALB
