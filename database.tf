@@ -23,5 +23,5 @@ resource "aws_db_instance" "this" {
 #### Subnet association for RDS 
 resource "aws_db_subnet_group" "main" {
   name       = "main_db_subnet_group"
-  subnet_ids = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
+  subnet_ids = [aws_subnet.subnets["priv-subnet-a"].id, aws_subnet.subnets["priv-subnet-b"].id]
 }

@@ -13,51 +13,16 @@ resource "aws_vpc" "this" {
 
 
 #### Subnets ####################################################################################
-#### PUB subnet A
-resource "aws_subnet" "pub-subnet-a" {
+resource "aws_subnet" "subnets" {
+  for_each = var.subnet_config
+
   vpc_id                  = aws_vpc.this.id
-  cidr_block              = "10.0.0.64/27" # 10.0.0.65 to 10.0.0.94
-  availability_zone       = "us-east-1a"
-  map_public_ip_on_launch = true
+  cidr_block              = each.value.cidr_block
+  availability_zone       = each.value.availability_zone
+  map_public_ip_on_launch = each.value.map_public_ip_on_launch
 
   tags = {
-    Name = "pub-subnet-a"
-  }
-}
-
-#### PUB subnet B
-resource "aws_subnet" "pub-subnet-b" {
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = "10.0.0.32/27" # 10.0.0.33 to 10.0.0.62
-  availability_zone       = "us-east-1b"
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "pub-subnet-b"
-  }
-}
-
-#### PRIV subnet A
-resource "aws_subnet" "priv-subnet-a" {
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = "10.0.0.96/27" # 10.0.0.97 to 10.0.0.126
-  availability_zone       = "us-east-1a"
-  map_public_ip_on_launch = false
-
-  tags = {
-    Name = "priv-subnet-a"
-  }
-}
-
-#### PRIV subnet B
-resource "aws_subnet" "priv-subnet-b" {
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = "10.0.0.128/27" # 10.0.0.129 to 10.0.0.158
-  availability_zone       = "us-east-1b"
-  map_public_ip_on_launch = false
-
-  tags = {
-    Name = "priv-subnet-b"
+    Name = each.key
   }
 }
 
@@ -88,11 +53,11 @@ resource "aws_route_table" "public" {
 
 #### Associate PUBLIC subnets with route table
 resource "aws_route_table_association" "pub-sub-assoc-1" {
-  subnet_id      = aws_subnet.pub-subnet-a.id # pub-subnet-a
+  subnet_id      = aws_subnet.subnets["pub-subnet-a"].id # pub-subnet-a
   route_table_id = aws_route_table.public.id
 }
 resource "aws_route_table_association" "pub-sub-assoc-2" {
-  subnet_id      = aws_subnet.pub-subnet-b.id # pub-subnet-b
+  subnet_id      = aws_subnet.subnets["pub-subnet-b"].id # pub-subnet-b
   route_table_id = aws_route_table.public.id
 }
 
@@ -108,11 +73,11 @@ resource "aws_route_table" "private" {
 
 #### Associate PRIVATE subnets with route table
 resource "aws_route_table_association" "priv_sub_assoc-1" {
-  subnet_id      = aws_subnet.priv-subnet-a.id
+  subnet_id      = aws_subnet.subnets["priv-subnet-a"].id
   route_table_id = aws_route_table.private.id
 }
 resource "aws_route_table_association" "priv_sub_assoc-2" {
-  subnet_id      = aws_subnet.priv-subnet-b.id
+  subnet_id      = aws_subnet.subnets["priv-subnet-b"].id
   route_table_id = aws_route_table.private.id
 }
 
@@ -126,7 +91,7 @@ resource "aws_vpc_endpoint" "ecr-dkr" {
   private_dns_enabled = true
 
   security_group_ids = [aws_security_group.endpoint-sg.id]
-  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id] # private subnets
+  subnet_ids         = [aws_subnet.subnets["priv-subnet-a"].id, aws_subnet.subnets["priv-subnet-b"].id] # private subnets
 }
 
 #### ECR API endpoint
@@ -137,7 +102,7 @@ resource "aws_vpc_endpoint" "ecr_api" {
   private_dns_enabled = true
 
   security_group_ids = [aws_security_group.endpoint-sg.id]
-  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
+  subnet_ids         = [aws_subnet.subnets["priv-subnet-a"].id, aws_subnet.subnets["priv-subnet-b"].id]
 }
 
 #### CloudWatch endpoint
@@ -148,7 +113,7 @@ resource "aws_vpc_endpoint" "cloudwatch" {
   private_dns_enabled = true
 
   security_group_ids = [aws_security_group.endpoint-sg.id]
-  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
+  subnet_ids         = [aws_subnet.subnets["priv-subnet-a"].id, aws_subnet.subnets["priv-subnet-b"].id]
 }
 
 #### S3 endpoint
@@ -166,7 +131,7 @@ resource "aws_lb" "this" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb-sg.id]
-  subnets            = [aws_subnet.pub-subnet-a.id, aws_subnet.pub-subnet-b.id] # associate with public subnets
+  subnets            = [aws_subnet.subnets["pub-subnet-a"].id, aws_subnet.subnets["pub-subnet-b"].id] # associate with public subnets
 
   # logging
   access_logs {

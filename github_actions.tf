@@ -9,7 +9,7 @@ resource "aws_iam_openid_connect_provider" "github" {
 
 #### IAM Role that federated GitHub user will assume
 resource "aws_iam_role" "github_oidc_role" {
-  name               = "github_oidc_role"
+  name = "github_oidc_role"
 
   # Inline assume role policy
   assume_role_policy = jsonencode({
