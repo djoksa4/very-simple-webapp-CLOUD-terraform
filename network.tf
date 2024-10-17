@@ -1,4 +1,5 @@
-#### VPC #############################################
+
+#### VPC ########################################################################################
 resource "aws_vpc" "this" {
   cidr_block           = "10.0.0.0/24" # 10.0.0.1 to 10.0.0.254
   enable_dns_support   = true
@@ -11,8 +12,7 @@ resource "aws_vpc" "this" {
 }
 
 
-
-#### Subnets #########################################
+#### Subnets ####################################################################################
 #### PUB subnet A
 resource "aws_subnet" "pub-subnet-a" {
   vpc_id                  = aws_vpc.this.id
@@ -62,9 +62,7 @@ resource "aws_subnet" "priv-subnet-b" {
 }
 
 
-
-
-#### Internet Gateway ################################
+#### Internet Gateway ###########################################################################
 resource "aws_internet_gateway" "this" {
   vpc_id = aws_vpc.this.id
 
@@ -74,9 +72,7 @@ resource "aws_internet_gateway" "this" {
 }
 
 
-
-
-#### Public Route Table setup ########################
+#### Public Route Table setup ###################################################################
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.this.id
 
@@ -89,6 +85,7 @@ resource "aws_route_table" "public" {
     gateway_id = aws_internet_gateway.this.id
   }
 }
+
 #### Associate PUBLIC subnets with route table
 resource "aws_route_table_association" "pub-sub-assoc-1" {
   subnet_id      = aws_subnet.pub-subnet-a.id # pub-subnet-a
@@ -100,51 +97,7 @@ resource "aws_route_table_association" "pub-sub-assoc-2" {
 }
 
 
-
-#### VPC endpoints for ECR
-#### ECR DKR endpoint
-resource "aws_vpc_endpoint" "ecr-dkr" {
-  vpc_id              = aws_vpc.this.id
-  service_name        = "com.amazonaws.us-east-1.ecr.dkr"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = true
-
-  security_group_ids = [aws_security_group.endpoint-sg.id]
-  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id] # private subnets
-}
-#### ECR API endpoint
-resource "aws_vpc_endpoint" "ecr_api" {
-  vpc_id              = aws_vpc.this.id
-  service_name        = "com.amazonaws.us-east-1.ecr.api"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = true
-
-  security_group_ids = [aws_security_group.endpoint-sg.id]
-  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
-}
-#### CloudWatch endpoint
-resource "aws_vpc_endpoint" "cloudwatch" {
-  vpc_id              = aws_vpc.this.id
-  service_name        = "com.amazonaws.us-east-1.logs"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = true
-
-  security_group_ids = [aws_security_group.endpoint-sg.id]
-  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
-}
-#### S3 endpoint
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = aws_vpc.this.id
-  service_name      = "com.amazonaws.us-east-1.s3"
-  vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_route_table.private.id]
-}
-
-
-
-
-
-#### Private Route Table #############################
+#### Private Route Table setup ##################################################################
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.this.id
 
@@ -164,9 +117,50 @@ resource "aws_route_table_association" "priv_sub_assoc-2" {
 }
 
 
+#### VPC endpoints for ECR ######################################################################
+#### ECR DKR endpoint
+resource "aws_vpc_endpoint" "ecr-dkr" {
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.us-east-1.ecr.dkr"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+
+  security_group_ids = [aws_security_group.endpoint-sg.id]
+  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id] # private subnets
+}
+
+#### ECR API endpoint
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.us-east-1.ecr.api"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+
+  security_group_ids = [aws_security_group.endpoint-sg.id]
+  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
+}
+
+#### CloudWatch endpoint
+resource "aws_vpc_endpoint" "cloudwatch" {
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.us-east-1.logs"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+
+  security_group_ids = [aws_security_group.endpoint-sg.id]
+  subnet_ids         = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
+}
+
+#### S3 endpoint
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.this.id
+  service_name      = "com.amazonaws.us-east-1.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id]
+}
 
 
-#### ALB #############################################
+#### ALB ########################################################################################
 resource "aws_lb" "this" {
   name               = "very-simple-webapp-cloud--alb"
   internal           = false
@@ -174,11 +168,11 @@ resource "aws_lb" "this" {
   security_groups    = [aws_security_group.alb-sg.id]
   subnets            = [aws_subnet.pub-subnet-a.id, aws_subnet.pub-subnet-b.id] # associate with public subnets
 
+  # logging
   access_logs {
     bucket  = aws_s3_bucket.troubleshooting_logs.bucket
     enabled = true
   }
-
   connection_logs {
     bucket  = aws_s3_bucket.troubleshooting_logs.bucket
     enabled = true
@@ -186,7 +180,7 @@ resource "aws_lb" "this" {
 }
 
 
-#### Listener ########################################
+#### Listener (connects ALB with the Target Group)
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.this.arn # associate listener with ALB
   port              = "80"
@@ -198,7 +192,8 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-#### Target Group ####################################
+
+#### Target Group 
 resource "aws_lb_target_group" "this" {
   name        = "very-simple-webapp-cloud--tg"
   port        = 5000 # port on which targets RECEIVE traffic
@@ -217,8 +212,7 @@ resource "aws_lb_target_group" "this" {
 }
 
 
-
-#### Security Groups ##################################
+#### Security Groups ############################################################################
 #### ALB SG (from public)
 resource "aws_security_group" "alb-sg" {
   name   = "alb-sg"
@@ -277,7 +271,6 @@ resource "aws_security_group" "endpoint-sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-
 
 #### DB SG (from ECS task)
 resource "aws_security_group" "rds" {

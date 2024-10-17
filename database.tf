@@ -1,8 +1,5 @@
-resource "aws_db_subnet_group" "main" {
-  name       = "main_db_subnet_group"
-  subnet_ids = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
-}
 
+#### RDS Instance ###############################################################################
 resource "aws_db_instance" "this" {
   allocated_storage      = 20
   max_allocated_storage  = 20
@@ -20,4 +17,11 @@ resource "aws_db_instance" "this" {
   db_subnet_group_name = aws_db_subnet_group.main.name
 
   skip_final_snapshot = true
+}
+
+
+#### Subnet association for RDS 
+resource "aws_db_subnet_group" "main" {
+  name       = "main_db_subnet_group"
+  subnet_ids = [aws_subnet.priv-subnet-a.id, aws_subnet.priv-subnet-b.id]
 }

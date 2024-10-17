@@ -7,8 +7,3 @@ variable "image_tag" {
   description = "The tag of the Docker image"
   type        = string
 }
-
-variable "github_repo" {
-  description = "The GitHub repository in the format org/repo"
-  type        = string
-}

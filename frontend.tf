@@ -1,11 +1,12 @@
 
-#### S3 Bucket
+#### S3 Bucket for frontent static files ########################################################
 resource "aws_s3_bucket" "this" {
   bucket        = "static-frontend-uihdfs87ytf764gh"
   force_destroy = true # delete objects on destroy
 }
 
-# S3 Bucket CORS config
+
+#### S3 Bucket CORS config
 resource "aws_s3_bucket_cors_configuration" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -18,34 +19,33 @@ resource "aws_s3_bucket_cors_configuration" "this" {
   }
 }
 
-# Data to be applied to S3 Bucket Policy
-data "aws_iam_policy_document" "cloudfront_oac_access" {
-  statement {
 
-    principals {
-      identifiers = ["cloudfront.amazonaws.com"]
-      type        = "Service"
-    }
-
-    actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.this.arn}/*"]
-
-    condition {
-      test     = "StringEquals"
-      values   = [aws_cloudfront_distribution.this.arn]
-      variable = "AWS:SourceArn"
-    }
-  }
-}
-
-# S3 Bucket Policy
+#### S3 Bucket Policy (allow CloudFront to access files)
 resource "aws_s3_bucket_policy" "this" {
   bucket = aws_s3_bucket.this.id
-  policy = data.aws_iam_policy_document.cloudfront_oac_access.json
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        },
+        Action = "s3:GetObject",
+        Resource = "${aws_s3_bucket.this.arn}/*",
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.this.arn
+          }
+        }
+      }
+    ]
+  })
 }
 
 
-#### CloudFront Distribution
+#### CloudFront #################################################################################
 resource "aws_cloudfront_distribution" "this" {
   enabled             = true
   default_root_object = "index.html"
@@ -78,9 +78,16 @@ resource "aws_cloudfront_distribution" "this" {
   viewer_certificate {
     cloudfront_default_certificate = true
   }
+
+  # logging to a bucket separate from frontend files
+  logging_config {
+    bucket          = "troubleshooting-logs-8375807834058309458.s3.amazonaws.com"
+    include_cookies = false
+  }
 }
 
-## CloudFront Origin Access Control (OAC)
+
+#### CloudFront Origin Access Control (OAC)
 resource "aws_cloudfront_origin_access_control" "this" {
   name                              = "s3-cloudfront-oac"
   origin_access_control_origin_type = "s3"
@@ -88,20 +95,22 @@ resource "aws_cloudfront_origin_access_control" "this" {
   signing_protocol                  = "sigv4"
 }
 
-# Custom CloudFront cache policy
+
+#### Custom CloudFront cache policy
 resource "aws_cloudfront_cache_policy" "custom_cache_policy" {
   name    = "custom-cache-policy-with-cors"
   comment = "Custom cache policy with CORS headers"
 
-  default_ttl = 86400  # 1 day (same as CachingOptimized)
-  max_ttl     = 31536000  # 1 year (same as CachingOptimized)
-  min_ttl     = 60  # 1 minute (same as CachingOptimized)
+  default_ttl = 86400    # 1 day (same as CachingOptimized)
+  max_ttl     = 31536000 # 1 year (same as CachingOptimized)
+  min_ttl     = 60       # 1 minute (same as CachingOptimized)
 
+  # CORS config for cache
   parameters_in_cache_key_and_forwarded_to_origin {
     headers_config {
       header_behavior = "whitelist"
       headers {
-        items           = ["Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method"]
+        items = ["Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method"]
       }
     }
 
